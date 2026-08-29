@@ -1,0 +1,74 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Toxpox <toxpox@outlook.com>
+Date: Wed, 12 Aug 2026 17:00:00 +0300
+Subject: [PATCH] board: t3-gem-o1: make the boot env compatible with Armbian uEnv.txt
+
+The T3 board env overrode four generic TI mmc.env variables in ways that
+are incompatible with the Armbian K3 boot flow (boot-k3.cmd:uEnv.txt):
+
+  * importbootenv ended with "setenv uenvcmd", wiping the uenvcmd that
+    Armbian just imported from uEnv.txt, so envboot never ran it.
+  * get_kern_mmc / get_fdt_mmc ignored ${bootdir} and hardcoded the DTB
+    name, so the Armbian /dtb/ti/ layout was never found.
+  * args_mmc forced root=/dev/mmcblkXp2 rootfstype=btrfs, overriding the
+    generic PARTUUID/ext4 args Armbian relies on.
+
+Also "boot=mmc" was missing. Every other TI board env defines it
+(board/ti/am62x, board/beagle/beagley-ai, ...) and bootcmd_ti_mmc
+dereferences it as run init_${boot} / get_kern_${boot}.
+
+Move the T3-specific loaders to *_t3 names so bootcmd_mmc keeps the exact
+vendor behaviour, and leave the generic mmc.env variables untouched so
+the Armbian uenvcmd path works.
+
+Keep the ramdisk at 0x90000000 as well. The TI common environment places
+it at 0x88080000, halfway through the 1 MiB FDT workspace that overlay
+application reserves at 0x88000000.
+
+Signed-off-by: Toxpox <toxpox@outlook.com>
+---
+ board/t3/t3-gem-o1/t3-gem-o1.env | 16 +++++++++-------
+ 1 file changed, 9 insertions(+), 7 deletions(-)
+
+diff --git a/board/t3/t3-gem-o1/t3-gem-o1.env b/board/t3/t3-gem-o1/t3-gem-o1.env
+index 514de9ceba7..05d7438b372 100644
+--- a/board/t3/t3-gem-o1/t3-gem-o1.env
++++ b/board/t3/t3-gem-o1/t3-gem-o1.env
+@@ -11,6 +11,7 @@ console=ttyS2,115200n8
+ args_all=setenv optargs ${optargs} earlycon=ns16550a,mmio32,0x02800000
+ 	${mtdparts}
+ run_kern=booti ${loadaddr} ${rd_spec} ${fdtaddr}
++boot=mmc
+ 
+ mmcdev=0
+ firstboot=1
+@@ -18,6 +19,8 @@ bootdir=/boot
+ rd_spec=-
+ fdtoverlayaddr=0x89000000
+ initrdaddr=0x90000000
++rdaddr=0x90000000
++ramdisk_addr_r=0x90000000
+ 
+ dfu_alt_info_ram=tispl.bin ram 0x80080000 0x200000;u-boot.img ram 0x81000000 0x400000
+ dfu_alt_info_emmc=rawemmc raw 0 0
+@@ -30,14 +33,13 @@ boot_eth=run args_mmc; load mmc ${bootpart} ${loadaddr} Image; load mmc ${bootpa
+ flash_emmc_boot=mmc dev 0 1; setenv loadaddr 0xc2000000; setenv image_addr "0xc2000000"; tftp ${image_addr} texas_am67_sbl_emmcboot.release.hs_fs.tiimage; mmc write ${image_addr} 0x0 0x400; tftp ${image_addr} linux.appimage.hs_fs; mmc write ${image_addr} 0x400 0x800; tftp ${image_addr} u-boot.img; mmc write ${image_addr} 0x1400 0x800; mmc partconf 0 1 1 1; mmc bootbus 0 2 0 0;
+ bootcmd_eth=run init_env_eth; run flash_emmc_eth; run flash_emmc_boot; setenv firstboot 1; run boot_eth
+ 
+-get_kern_mmc=load mmc ${bootpart} ${loadaddr} ${name_kern}
+-get_fdt_mmc=load mmc ${bootpart} ${fdtaddr} k3-am67a-t3-gem-o1.dtb; fdt addr ${fdtaddr}; fdt resize 8192
+-get_initrd_mmc=load mmc ${bootpart} ${initrdaddr} gemstone-image-rd-t3-gem-o1.cpio.gz
++get_kern_t3=load mmc ${bootpart} ${loadaddr} ${name_kern}
++get_fdt_t3=load mmc ${bootpart} ${fdtaddr} k3-am67a-t3-gem-o1.dtb; fdt addr ${fdtaddr}; fdt resize 8192
++get_initrd_t3=load mmc ${bootpart} ${initrdaddr} gemstone-image-rd-t3-gem-o1.cpio.gz
+ get_overlays=for o in ${overlays}; do load mmc ${bootpart} ${fdtoverlayaddr} overlays/${o}; fdt apply ${fdtoverlayaddr}; done
+-importbootenv=echo Importing environment from mmc${mmcdev} ...; env import -t ${loadaddr} ${filesize}; setenv uenvcmd
+-args_mmc=setenv bootargs console=${console} ${optargs} root=/dev/mmcblk${mmcdev}p2 rw rootfstype=btrfs rootwait bootpart=/dev/mmcblk${mmcdev}p1 firstboot=${firstboot} init_fatal_sh=1
+-boot_mmc=run get_kern_mmc; run get_fdt_mmc; run get_overlays; run get_initrd_mmc; booti ${loadaddr} ${initrdaddr}:${filesize} ${fdtaddr}
+-bootcmd_mmc=run args_mmc; run boot_mmc
++args_t3=setenv bootargs console=${console} ${optargs} root=/dev/mmcblk${mmcdev}p2 rw rootfstype=btrfs rootwait bootpart=/dev/mmcblk${mmcdev}p1 firstboot=${firstboot} init_fatal_sh=1
++boot_t3=run get_kern_t3; run get_fdt_t3; run get_overlays; run get_initrd_t3; booti ${loadaddr} ${initrdaddr}:${filesize} ${fdtaddr}
++bootcmd_mmc=run args_t3; run boot_t3
+ 
+ app_tmp_loadaddr=0x90000000
+ load_and_run_mcu_r5f=load ${bootdev} ${mmcdev}:1 ${app_tmp_loadaddr} mcu-fw/${mcu_r5f_firmware_name} && rproc init 0 && rproc load 0 ${app_tmp_loadaddr} ${filesize} && rproc start 0 && echo "MCU R5 core started with ${mcu_r5f_firmware_name} firmware";
