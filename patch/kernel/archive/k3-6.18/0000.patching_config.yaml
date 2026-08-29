@@ -1,0 +1,5 @@
+config:
+
+  # .dts files in these directories are copied as-is into the build tree.
+  dts-directories:
+    - { source: "dt", target: "arch/arm64/boot/dts/ti" }
