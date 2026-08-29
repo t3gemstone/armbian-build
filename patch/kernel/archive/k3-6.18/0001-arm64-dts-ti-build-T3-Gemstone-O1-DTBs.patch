@@ -1,28 +1,30 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Toxpox <toxpox@outlook.com>
 Date: Tue, 11 Aug 2026 11:45:00 +0300
-Subject: [PATCH] arm64: dts: ti: build the T3 Gemstone O1 DTB
+Subject: [PATCH] arm64: dts: ti: build the T3 Gemstone O1 DTBs
 
 The board DTS is not upstream yet, so Armbian carries the whole file in
 patch/kernel/archive/k3-6.18/dt/ and copies it in through dts-directories.
-Copying alone never builds the source, so add the Makefile entry.
+Copying alone never builds the sources, so add the Makefile entries for the
+base DTB and the optional PCIe Gen3 opt-in overlay.
 
 The K3 Makefile mixes .dtb and .dtbo targets under one config variable, which
 the auto-patch-dt-makefile helper cannot reproduce, hence the explicit patch.
 
 Signed-off-by: Toxpox <toxpox@outlook.com>
 ---
- arch/arm64/boot/dts/ti/Makefile | 1 +
- 1 file changed, 1 insertion(+)
+ arch/arm64/boot/dts/ti/Makefile | 2 ++
+ 1 file changed, 2 insertions(+)
 
 diff --git a/arch/arm64/boot/dts/ti/Makefile b/arch/arm64/boot/dts/ti/Makefile
 --- a/arch/arm64/boot/dts/ti/Makefile
 +++ b/arch/arm64/boot/dts/ti/Makefile
-@@ -218,6 +218,7 @@ dtb-$(CONFIG_ARCH_K3) += k3-j721s2-evm-audio.dtbo
+@@ -218,6 +218,8 @@ dtb-$(CONFIG_ARCH_K3) += k3-j721s2-evm-audio.dtbo
  
  # Boards with J722s SoC
  dtb-$(CONFIG_ARCH_K3) += k3-am67a-beagley-ai.dtb
 +dtb-$(CONFIG_ARCH_K3) += k3-am67a-t3-gem-o1.dtb
++dtb-$(CONFIG_ARCH_K3) += k3-am67a-t3-gem-o1-pcie-link-speed-3.dtbo
  dtb-$(CONFIG_ARCH_K3) += k3-j722s-evm.dtb
  dtb-$(CONFIG_ARCH_K3) += k3-j722s-evm-csi2-quad-rpi-cam-imx219.dtbo
  dtb-$(CONFIG_ARCH_K3) += k3-j722s-evm-csi2-quad-tevi-ov5640.dtbo

@@ -1207,7 +1207,9 @@ csi0_i2c: &main_i2c2 {
 	phys = <&serdes1_pcie_link>;
 	phy-names = "pcie-phy";
 	num-lanes = <1>;
-	/* Gen2: the onboard M.2 slot does not train reliably at Gen3 */
+	/* Gen2 by default: the onboard M.2 slot (DX-M1) does not enumerate at
+	 * Gen3. Apply the pcie-link-speed-3 overlay to opt into Gen3 for cards
+	 * that train reliably. */
 	max-link-speed = <2>;
 	reset-gpios = <&mcu_gpio0 6 GPIO_ACTIVE_HIGH>;
 };

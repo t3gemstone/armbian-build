@@ -72,3 +72,32 @@ function post_family_tweaks__t3_gem_o1_blacklist_powervr() {
 		blacklist powervr
 	EOF
 }
+
+function pre_umount_final_image__zzz_t3_gem_o1_overlay_hint() {
+	# The base DTB runs PCIe0 at Gen2 because the onboard M.2 slot (DX-M1) does
+	# not enumerate at Gen3 on current hardware. Ship the Gen3 opt-in overlay
+	# next to the DTBs and document how to enable it, but leave it disabled so
+	# stock images keep the working Gen2 link. Users uncomment name_overlays and
+	# reboot to try Gen3 with a card that trains reliably. The TI U-Boot env
+	# applies every entry in name_overlays via get_overlay_mmc
+	# (load ${bootdir}/dtb/${overlay}; fdt apply).
+	local uenv="${MOUNT}/boot/uEnv.txt"
+
+	if [[ ! -f "${uenv}" ]]; then
+		display_alert "$BOARD" "Missing ${uenv}; cannot document PCIe overlay" "wrn"
+		return 0
+	fi
+
+	if grep -q 'name_overlays' "${uenv}"; then
+		return 0
+	fi
+
+	cat <<- 'EOF' >> "${uenv}"
+
+	# Optional device-tree overlays applied by U-Boot at boot. Space-separated,
+	# each path is relative to /boot/dtb/. Uncomment to raise the PCIe0 M.2 slot
+	# to Gen3 (8.0 GT/s) for a card that trains reliably (base default is Gen2):
+	#name_overlays=ti/k3-am67a-t3-gem-o1-pcie-link-speed-3.dtbo
+	EOF
+}
+
